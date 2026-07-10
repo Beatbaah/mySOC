@@ -1,0 +1,12 @@
+venv/
+__pycache__/
+*.pyc
+.DS_Store
+*.log
+logs/
+soc_data.db
+mnt/
+.env
+!.env.example
+.streamlit/secrets.toml
+*.mmdb
