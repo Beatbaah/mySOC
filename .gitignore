@@ -1,12 +1,28 @@
-venv/
-__pycache__/
-*.pyc
-.DS_Store
-*.log
-logs/
-soc_data.db
-mnt/
+# secrets and local config
 .env
 !.env.example
-.streamlit/secrets.toml
+*.key
+.mysoc-dev-vault.key
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.db
+*.db-wal
+*.db-shm
+
+# node
+node_modules/
+frontend/dist/
+
+# data and logs
+logs/
+mnt/
 *.mmdb
+*.pcap
+
+.DS_Store

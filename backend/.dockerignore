@@ -1,0 +1,10 @@
+.venv
+__pycache__
+*.pyc
+*.db
+*.db-*
+.env
+.mysoc-dev-vault.key
+tests
+.pytest_cache
+.ruff_cache

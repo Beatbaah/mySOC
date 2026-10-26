@@ -1,0 +1,73 @@
+# mySOC: `cp .env.example .env`, fill it in, then `docker compose up -d`.
+# Console: http://localhost:8080
+
+name: mysoc
+
+services:
+  db:
+    image: postgres:16.6-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: mysoc
+      POSTGRES_USER: mysoc
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mysoc -d mysoc"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [backend]
+
+  api:
+    build: ./backend
+    restart: unless-stopped
+    env_file: .env
+    environment: &common
+      MYSOC_DATABASE_URL: postgresql+psycopg://mysoc:${POSTGRES_PASSWORD}@db:5432/mysoc
+      MYSOC_PUBLIC_ORIGIN: ${MYSOC_PUBLIC_ORIGIN:-http://localhost:8080}
+    depends_on:
+      db: { condition: service_healthy }
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    networks: [backend, frontend]
+
+  sensor:
+    build: ./backend
+    command: ["python", "-m", "mysoc.sensor"]
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      <<: *common
+    depends_on:
+      db: { condition: service_healthy }
+      api: { condition: service_started }
+    ports:
+      - "514:5514/udp"   # syslog, when MYSOC_SYSLOG_ENABLED=true
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    networks: [backend]
+
+  web:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on: [api]
+    ports:
+      - "8080:8080"
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    networks: [frontend]
+
+networks:
+  backend:
+  frontend:
+
+volumes:
+  db:

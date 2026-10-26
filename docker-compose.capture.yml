@@ -1,0 +1,16 @@
+# Live capture on the host's network. Use together with the main file:
+#   MYSOC_SENSOR_SOURCE=capture docker compose -f docker-compose.yml -f docker-compose.capture.yml up -d
+# The sensor joins the host network to see real traffic and gets only the
+# two capabilities raw capture needs.
+services:
+  sensor:
+    network_mode: host
+    ports: !reset []
+    networks: !reset null
+    cap_add: [NET_RAW, NET_ADMIN]
+    environment:
+      MYSOC_SENSOR_SOURCE: capture
+      MYSOC_DATABASE_URL: postgresql+psycopg://mysoc:${POSTGRES_PASSWORD}@127.0.0.1:5432/mysoc
+  db:
+    ports:
+      - "127.0.0.1:5432:5432"
