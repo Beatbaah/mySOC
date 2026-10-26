@@ -112,16 +112,15 @@ p { margin: 0; }
 
 /* ── shell ─────────────────────────────────────────────────────────────── */
 
-.shell { display: grid; grid-template-columns: var(--sidebar) 1fr; min-height: 100%; }
+.shell { display: grid; grid-template-columns: var(--sidebar) 1fr; min-height: 100%; transition: grid-template-columns 0.22s cubic-bezier(0.3, 0.7, 0.2, 1); }
 .sidebar {
   position: sticky; top: 0; height: 100vh; overflow-y: auto;
   background: var(--surface); border-right: 1px solid var(--border);
   display: flex; flex-direction: column; padding: 14px 10px;
 }
 .brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px 16px; }
-.brand-mark { width: 28px; height: 28px; border-radius: 6px; background: var(--text); display: grid; place-items: center; color: var(--surface); }
-.brand-name { font-weight: 600; font-size: 15px; letter-spacing: -0.01em; }
-.brand-name b { font-weight: 600; }
+.brand-name { display: inline-flex; align-items: baseline; font-weight: 700; font-size: 21px; line-height: 28px; letter-spacing: -0.035em; }
+.brand-name svg { height: .53em; width: auto; margin-right: .035em; overflow: visible; }
 .nav-group { margin-top: 10px; }
 .nav-label { font-size: 12px; font-weight: 500; color: var(--text-3); padding: 6px 10px 4px; }
 .nav-link {
@@ -131,8 +130,44 @@ p { margin: 0; }
 .nav-link:hover { background: var(--hover); color: var(--text); }
 .nav-link.active { background: var(--raised); color: var(--text); font-weight: 600; }
 .nav-link.active svg { color: var(--text); }
-.nav-link .count { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--text-3); }
-.nav-link .count.hot { color: var(--sev-critical); }
+.nav-link .count { margin-left: auto; font-family: var(--mono); font-size: 11px; font-weight: 500; color: var(--text-2);
+  background: var(--raised); border-radius: 999px; padding: 1px 7px; min-width: 22px; text-align: center; }
+.nav-link .count.hot { color: #fff; background: var(--sev-critical); }
+.nav-link svg { flex: none; }
+.nav-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.rail-toggle { width: 100%; border: 0; background: transparent; cursor: pointer; font: inherit; font-size: 13px; color: var(--text-3); margin-top: 2px; }
+.sensor-rate { margin-left: auto; }
+
+/* The sliding highlight and the icon rail are desktop features. On narrow screens the sidebar wraps into a
+   bar with no footer (so no expand button), so both stay off there even if the rail was chosen on desktop. */
+@media (min-width: 861px) {
+/* The active page's highlight slides between links: a raised fill with a solid edge marker. */
+.sidebar nav { position: relative; }
+.sidebar nav > .nav-group, .sidebar nav .nav-link { position: relative; z-index: 1; }
+.sidebar nav[data-ind]::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; height: var(--nav-h); transform: translateY(var(--nav-y));
+  background: var(--raised); border-radius: var(--r-sm); box-shadow: inset 3px 0 0 var(--text);
+  transition: transform 0.24s cubic-bezier(0.3, 0.7, 0.2, 1), height 0.24s;
+}
+.sidebar nav[data-ind] .nav-link.active { background: transparent; }
+
+/* Icon rail: labels go, icons stay, and each link names itself on hover. */
+.shell[data-rail] { grid-template-columns: 60px 1fr; }
+.shell[data-rail] .sidebar { padding: 14px 8px; overflow: visible; }
+.shell[data-rail] .brand { justify-content: center; padding: 4px 0 16px; }
+.shell[data-rail] .nav-text, .shell[data-rail] .sensor-line > :not(.dot), .shell[data-rail] .nav-label { display: none; }
+.shell[data-rail] .nav-group { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); }
+.shell[data-rail] .nav-group:first-child { border-top: 0; }
+.shell[data-rail] .nav-link { justify-content: center; padding: 8px 0; }
+.shell[data-rail] .sensor-line { justify-content: center; padding: 0; }
+.shell[data-rail] .nav-link .count { position: absolute; top: -3px; right: -3px; min-width: 0; padding: 0 4px; font-size: 9.5px; line-height: 14px; }
+.shell[data-rail] .nav-link:hover::after {
+  content: attr(data-tip); position: absolute; left: calc(100% + 10px); top: 50%; transform: translateY(-50%); z-index: 40;
+  background: var(--text); color: var(--surface); font-size: 12px; font-weight: 500; padding: 4px 8px; border-radius: 5px; white-space: nowrap;
+  animation: fade 0.12s ease-out; pointer-events: none;
+}
+}
 .sidebar-foot { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border); display: grid; gap: 8px; }
 .sensor-line { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-2); padding: 0 8px; }
 
@@ -189,10 +224,32 @@ p { margin: 0; }
   .topbar { padding: 0 16px; }
 }
 
-.kpi { padding: 14px 16px; }
-.kpi .label { font-size: 12px; color: var(--text-2); display: flex; align-items: center; gap: 6px; }
-.kpi .value { font-family: var(--mono); font-size: 24px; font-weight: 500; letter-spacing: -0.03em; margin-top: 4px; }
-.kpi .note { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+/* KPI tiles: label, a big number in the UI face, and a small picture of what the number means at the foot. */
+.kpi { container-type: inline-size; padding: 16px 18px 14px; display: flex; flex-direction: column; min-height: 142px; color: inherit; }
+.kpi .label { font-size: 12.5px; font-weight: 500; color: var(--text-2); display: flex; align-items: center; gap: 6px; }
+.kpi .value { font-size: 34px; line-height: 1; font-weight: 600; letter-spacing: -0.04em; font-variant-numeric: tabular-nums;
+  margin-top: 10px; display: flex; align-items: baseline; gap: 8px; }
+.kpi .value .of { font-size: 13px; font-weight: 500; letter-spacing: 0; color: var(--text-3); }
+.kpi .note { font-size: 12px; color: var(--text-3); margin-top: 6px; }
+.kpi-foot { margin-top: auto; padding-top: 14px; }
+.kpi.link { transition: border-color 0.15s, transform 0.15s; }
+.kpi.link:hover { border-color: var(--border-strong); transform: translateY(-1px); }
+.sev-bar { display: flex; gap: 2px; height: 6px; border-radius: 3px; overflow: hidden; background: var(--raised); }
+.sev-bar i { display: block; min-width: 3px; transform-origin: left; animation: grow 0.5s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.sev-bar .sev-critical { background: var(--sev-critical); } .sev-bar .sev-high { background: var(--sev-high); }
+.sev-bar .sev-medium { background: var(--sev-medium); } .sev-bar .sev-low { background: var(--sev-low); }
+.kpi-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 8px; font-size: 12px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.kpi-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.kpi-legend span .sev-dot { display: inline-block; width: 7px; height: 7px; border-radius: 2px; box-shadow: none; }
+.kpi-legend { flex-wrap: nowrap; overflow: hidden; }
+.kpi-legend .lg-name { color: var(--text-3); margin-left: 3px; }
+/* Narrow tiles keep the counts and drop the words; the dot colour and tooltip still say which is which. */
+@container (max-width: 300px) { .kpi-legend .lg-name { display: none; } }
+.meter { height: 6px; border-radius: 3px; background: var(--raised); overflow: hidden; }
+.meter i { display: block; height: 100%; border-radius: 3px; transform-origin: left; animation: grow 0.5s cubic-bezier(0.2, 0.8, 0.2, 1); transition: width 0.4s; }
+.spark { display: block; width: 100%; height: 26px; }
+.spark-line { fill: none; stroke: var(--text-2); stroke-width: 1.4; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.spark-fill { fill: var(--raised); stroke: none; }
 .delta-up { color: var(--sev-high); }
 .delta-down { color: var(--ok); }
 
@@ -254,6 +311,8 @@ table.data { width: 100%; border-collapse: collapse; }
 .data tbody tr.clickable:hover { background: var(--hover); }
 .data tbody tr.selected { background: var(--accent-bg); }
 .data .num { text-align: right; font-family: var(--mono); font-size: 12px; }
+/* Headers of number columns stay in the UI face like every other header; only the figures are mono. */
+.data th.num { font-family: inherit; font-size: inherit; }
 .data td.title-cell { min-width: 260px; }
 .data .title-text { font-weight: 500; }
 .data .sub { font-size: 12px; color: var(--text-3); margin-top: 1px; }
@@ -283,6 +342,11 @@ table.data { width: 100%; border-collapse: collapse; }
 .risk { display: inline-flex; align-items: center; gap: 7px; font-family: var(--mono); font-size: 12px; }
 .risk-bar { width: 36px; height: 4px; border-radius: 2px; background: var(--raised); overflow: hidden; }
 .risk-bar i { display: block; height: 100%; border-radius: 2px; }
+.data.fixed { table-layout: fixed; width: 100%; }
+/* A headline figure at the top of a card, above its breakdown. */
+.card-stat { display: flex; align-items: baseline; gap: 8px; margin-bottom: 16px; }
+.card-stat b { font-size: 26px; font-weight: 600; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.card-stat span { font-size: 12.5px; color: var(--text-3); }
 
 .ip { font-family: var(--mono); font-size: 12px; color: var(--text); border-bottom: 1px dotted var(--text-3); }
 .ip:hover { color: var(--accent); border-color: var(--accent); }
@@ -293,12 +357,28 @@ table.data { width: 100%; border-collapse: collapse; }
 .dot.off { background: var(--danger); }
 
 .bar-list { display: grid; gap: 8px; }
+/* Busiest detections: the alert count anchors each row; title on one line, rule and volume underneath. */
+.rule-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.rule-list li + li { border-top: 1px solid var(--border); }
+.rule-list a { display: grid; grid-template-columns: 44px minmax(0, 1fr); column-gap: 12px; row-gap: 3px; padding: 8px 4px; border-radius: 6px; color: inherit; }
+.rule-list a:hover { background: var(--hover); }
+.rule-count { grid-row: span 2; align-self: center; text-align: right; font-family: var(--mono); font-size: 18px; font-weight: 500; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.rule-title { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rule-meta { display: grid; grid-template-columns: 58px 80px minmax(0, 1fr); align-items: center; font-size: 11.5px; color: var(--text-3); }
+.rule-meta .track { height: 3px; background: var(--raised); border-radius: 2px; overflow: hidden; }
+.rule-meta .track i { display: block; height: 100%; background: var(--text-3); border-radius: 2px; transform-origin: left; animation: grow 0.5s cubic-bezier(0.2, 0.8, 0.2, 1); transition: width 0.4s; }
 .bar-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; font-size: 12.5px; }
 .bar-row .track { grid-column: 1 / -1; height: 4px; background: var(--raised); border-radius: 2px; overflow: hidden; }
 .bar-row .track i { display: block; height: 100%; background: var(--text-3); border-radius: 2px; }
 
 .empty { padding: 36px 16px; text-align: center; color: var(--text-3); }
 .empty strong { display: block; color: var(--text-2); font-weight: 500; margin-bottom: 4px; }
+.empty.big { padding: 56px 16px; display: flex; flex-direction: column; align-items: center; }
+.empty.big strong { color: var(--text); font-size: 15px; font-weight: 600; }
+.empty-icon { display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; margin-bottom: 12px;
+  background: var(--raised); color: var(--text-2); }
+.empty.big > :not(.empty-icon):not(strong):not(.empty-action) { max-width: 46ch; margin: 0 auto; }
+.empty-action { margin-top: 16px; display: inline-flex; gap: 8px; }
 .error-box { padding: 10px 12px; border-radius: var(--r-sm); background: var(--danger-bg); color: var(--danger); font-size: 12.5px; }
 .note-box { padding: 10px 12px; border-radius: var(--r-sm); background: var(--accent-bg); color: var(--text); font-size: 12.5px; }
 
@@ -340,20 +420,31 @@ table.data { width: 100%; border-collapse: collapse; }
 
 .auth { min-height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 .auth-side { padding: 48px; display: flex; flex-direction: column; justify-content: space-between; border-right: 1px solid var(--border); background: var(--surface); position: relative; overflow: hidden; }
-.auth-side .pitch { max-width: 480px; }
-.auth-side h1 { font-size: 30px; line-height: 1.15; letter-spacing: -0.03em; }
+.auth-side .pitch { max-width: 520px; }
+.auth-side h1 { font-size: 40px; line-height: 1.08; letter-spacing: -0.04em; text-wrap: balance; }
+.auth-side p { max-width: 46ch; }
 .auth-side p { color: var(--text-2); margin-top: 12px; font-size: 14px; }
 .auth-main { display: grid; place-items: center; padding: 32px; }
-.auth-card { width: 100%; max-width: 360px; }
-.auth-card h2 { font-size: 18px; margin-bottom: 4px; }
+.auth-card { width: 100%; max-width: 380px; }
+.auth-card h2 { font-size: 24px; letter-spacing: -0.02em; margin-bottom: 4px; }
+.auth-card .input:not(.code-input), .auth-card .btn.primary { height: 40px; font-size: 14px; }
+.auth-side .brand-name { font-size: 28px; }
 .auth-card .lead { color: var(--text-2); margin-bottom: 20px; }
-.auth-fine { font-size: 12px; color: var(--text-3); margin-top: 18px; }
+.auth-fine { font-size: 12px; color: var(--text-2); margin-top: 18px; }
 .qr { background: #fff; padding: 10px; border-radius: var(--r); width: 180px; height: 180px; margin: 4px auto 12px; display: block; }
 .code-input { font-family: var(--mono); font-size: 20px; letter-spacing: 0.4em; text-align: center; height: 44px; }
 @media (max-width: 860px) { .auth { grid-template-columns: 1fr; } .auth-side { display: none; } }
 
-/* The traffic trace sits under the pitch, inside the panel, so it never runs off the edge or under the footer. */
-.trace { display: block; width: 100%; height: auto; margin-top: 36px; opacity: 0.7; pointer-events: none; }
+/* The traffic chart runs edge to edge across the panel; host labels sit in the panel's own 48px gutter. */
+.trace { display: block; width: calc(100% + 96px); margin: 0 -48px; height: auto; pointer-events: none; }
+.trace-lane { fill: none; stroke: var(--border-strong); stroke-width: 1; stroke-linejoin: round; }
+.trace-alert { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.trace-alert.glow { stroke-width: 5; opacity: .45; }
+.trace-host { font-family: var(--mono); font-size: 11px; fill: var(--text-3); transition: fill .3s; }
+.trace-host.hot { fill: var(--sev-high); font-weight: 500; }
+.trace-tag rect:first-child { fill: var(--surface); stroke: var(--border-strong); }
+.trace-tag .dot { fill: var(--sev-high); }
+.trace-tag text { font-size: 11.5px; font-weight: 600; fill: var(--text); }
 
 /* ── print (reports) ──────────────────────────────────────────────────── */
 
@@ -391,6 +482,48 @@ table.data { width: 100%; border-collapse: collapse; }
 .mini-seg button:hover { color: var(--text); }
 .mini-seg button.on { background: var(--raised); color: var(--text); font-weight: 600; }
 
+/* Checkboxes follow the monochrome UI instead of the browser's blue. */
+input[type='checkbox'] { accent-color: var(--text); width: 15px; height: 15px; cursor: pointer; }
+
+/* On/off switch (rules): the knob slides, and "on" is solid ink, "off" an empty track. */
+input.switch { appearance: none; -webkit-appearance: none; position: relative; width: 30px; height: 18px; margin: 0;
+  border-radius: 999px; background: var(--border-strong); transition: background 0.18s; flex: none; }
+input.switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--surface); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25); transition: transform 0.18s cubic-bezier(0.3, 0.7, 0.2, 1); }
+input.switch:checked { background: var(--text); }
+input.switch:checked::after { transform: translateX(12px); }
+input.switch:disabled { opacity: 0.5; cursor: not-allowed; }
+input.switch:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+
+/* Footer of a capped list. */
+.show-more { display: block; width: 100%; padding: 10px 16px; border: 0; border-top: 1px solid var(--border); background: transparent;
+  font: inherit; font-size: 12.5px; font-weight: 500; color: var(--text); text-align: left; cursor: pointer; }
+.show-more:hover { background: var(--hover); }
+@keyframes row-in { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+.row-in { animation: row-in 0.3s ease-out both; }
+
+/* Attack stages: the kill chain as one track. */
+.kc-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; font-size: 12.5px; color: var(--text-2); margin-bottom: 14px; }
+.kc-head b { font-size: 18px; font-weight: 600; letter-spacing: -0.02em; color: var(--text); }
+.kc-track { position: relative; display: grid; grid-template-columns: repeat(14, minmax(0, 1fr)); }
+/* The rail runs through the dots; the part between the first and furthest stage seen is solid. */
+.kc-track::before, .kc-track::after { content: ''; position: absolute; top: 75px; height: 2px; border-radius: 1px; }
+.kc-track::before { left: calc(100% / 28); right: calc(100% / 28); background: var(--border); }
+.kc-track::after { left: var(--kc-from); width: calc(var(--kc-to) - var(--kc-from)); background: var(--text); }
+.kc-stage { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; min-width: 0; padding: 0 2px; border-radius: 6px; }
+.kc-stage:hover { background: var(--hover); }
+.kc-bar-wrap { height: 70px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 3px; }
+.kc-n { font-family: var(--mono); font-size: 11.5px; font-weight: 500; color: var(--text); font-variant-numeric: tabular-nums; }
+.kc-bar { display: block; width: 16px; border-radius: 3px 3px 0 0; background: color-mix(in srgb, var(--sev-high) 55%, var(--surface));
+  transform-origin: bottom; animation: kc-grow 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.kc-stage.last .kc-bar { background: var(--sev-high); }
+@keyframes kc-grow { from { transform: scaleY(0); } }
+.kc-dot { width: 9px; height: 9px; border-radius: 50%; margin: 2px 0 8px; background: var(--surface); border: 2px solid var(--border-strong); }
+.kc-stage.on .kc-dot { background: var(--text); border-color: var(--text); }
+.kc-stage.last .kc-dot { background: var(--sev-high); border-color: var(--sev-high); box-shadow: 0 0 0 3px color-mix(in srgb, var(--sev-high) 25%, transparent); }
+.kc-name { font-size: 10.5px; line-height: 1.25; text-align: center; color: var(--text-3); hyphens: manual; }
+.kc-stage.on .kc-name { color: var(--text); font-weight: 500; }
+
 /* ── motion ────────────────────────────────────────────────────────────────
    Motion only answers something: a panel opening, a press, data arriving.
    Nothing animates on its own, and all of it stops under reduced motion. */
@@ -418,6 +551,27 @@ table.data { width: 100%; border-collapse: collapse; }
 /* Bars grow to their value when data loads or changes, so a jump reads as a jump. */
 @keyframes grow { from { transform: scaleX(0); } }
 .bar-row .track i { transform-origin: left; animation: grow 0.5s cubic-bezier(0.2, 0.8, 0.2, 1); transition: width 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+/* Segmented controls: one highlight slides to the chosen option (placed by useSegIndicators). */
+.seg, .mini-seg { position: relative; }
+.seg > button, .mini-seg > button { position: relative; z-index: 1; }
+.seg[data-ind]::before, .mini-seg[data-ind]::before {
+  content: ''; position: absolute; top: 2px; bottom: 2px; left: 0; width: var(--seg-w); transform: translateX(var(--seg-x));
+  background: var(--raised); border-radius: 4px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: transform 0.22s cubic-bezier(0.3, 0.7, 0.2, 1), width 0.22s cubic-bezier(0.3, 0.7, 0.2, 1);
+}
+.mini-seg[data-ind]::before { top: 0; bottom: 0; box-shadow: none; }
+.seg[data-ind] > button.on, .mini-seg[data-ind] > button.on { background: transparent; box-shadow: none; }
+
+/* A live number that just changed counts to its value and flashes once, like an arrived alert row. */
+.ticked { border-radius: 4px; animation: arrive 1.6s ease-out; }
+
+/* The Live dot beats once per update from the server. */
+@keyframes beat { 0% { box-shadow: 0 0 0 0 var(--ok); } 100% { box-shadow: 0 0 0 7px transparent; } }
+.dot.on.beat { animation: beat 0.9s ease-out; }
+
+/* Moving to another page fades its content in once. */
+.page-in { animation: fade 0.18s ease-out; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }

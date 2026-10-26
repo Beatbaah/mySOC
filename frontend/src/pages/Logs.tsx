@@ -3,7 +3,8 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { Search } from 'lucide-react'
 import { get } from '../api/client'
 import type { LogEvent } from '../api/types'
-import { Card, Empty, ErrorBox, Ip, PageHead, Seg, Skeleton } from '../components/ui'
+import { Card, Empty, ErrorBox, Ip, PageHead, Seg, Skeleton, ShowMore } from '../components/ui'
+import { useShown } from '../lib/useShown'
 import { dateTime } from '../lib/format'
 
 const SYSLOG_SEV = ['Emergency', 'Alert', 'Critical', 'Error', 'Warning', 'Notice', 'Info', 'Debug']
@@ -24,6 +25,7 @@ export default function Logs() {
     placeholderData: keepPreviousData,
     refetchInterval: 15_000,
   })
+  const list = useShown(data?.items ?? [], 50, 50, JSON.stringify([query, host, app, maxSeverity, hours]))
   return (
     <>
       <PageHead title="Logs" sub="Messages from firewalls, servers and other devices sent over syslog." />
@@ -56,8 +58,8 @@ export default function Logs() {
             <table className="data">
               <thead><tr><th>Time</th><th>Severity</th><th>Host</th><th>Program</th><th>Message</th></tr></thead>
               <tbody>
-                {data.items.map((l) => (
-                  <tr key={l.id}>
+                {list.shown.map((l, i) => (
+                  <tr key={l.id} className={list.fresh(i) ? 'row-in' : undefined}>
                     <td className="muted nowrap">{dateTime(l.at)}</td>
                     <td className="nowrap" style={{ color: SEV_COLOR[l.severity] }}>{SYSLOG_SEV[l.severity]}</td>
                     <td className="nowrap">{l.host} <span className="faint" style={{ fontSize: 11 }}><Ip ip={l.sourceIp} /></span></td>
@@ -67,6 +69,7 @@ export default function Logs() {
                 ))}
               </tbody>
             </table>
+            <ShowMore remaining={list.remaining} next={list.next} onClick={list.showMore} noun="messages" />
           </div>
         )}
       </Card>

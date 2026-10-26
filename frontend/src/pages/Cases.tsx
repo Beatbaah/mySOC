@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus } from 'lucide-react'
+import { Briefcase, Plus } from 'lucide-react'
 import { useCan } from '../api/auth'
 import { get, post } from '../api/client'
 import type { Case, Severity } from '../api/types'
@@ -90,7 +90,10 @@ export default function Cases() {
       <ErrorBox error={error} />
       <Card flush>
         {isLoading ? <Skeleton rows={6} /> : !data?.items.length ? (
-          <Empty title="No cases here">Open one from an alert, or with “New case”.</Empty>
+          <Empty title="No cases here" icon={<Briefcase size={20} />}
+            action={canEdit && <><button className="btn primary" onClick={() => setCreating([])}><Plus size={14} /> New case</button> <Link className="btn" to="/alerts">Go to alerts</Link></>}>
+            A case groups related alerts with an owner and a timeline. Start one here, or from any alert.
+          </Empty>
         ) : (
           <table className="data">
             <thead>

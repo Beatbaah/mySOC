@@ -54,6 +54,7 @@ export default function Handover() {
   const [notes, setNotes] = useState('')
   const [incoming, setIncoming] = useState('')
   const [shift, setShift] = useState('')
+  const [missing, setMissing] = useState(false)
   const { data, error, isLoading } = useQuery({ queryKey: ['handovers'], queryFn: () => get<{ items: HandoverRow[]; current: Snapshot }>('/api/handovers') })
   const save = useMutation({
     mutationFn: () => post('/api/handovers', { notes, incoming, shift }),
@@ -71,7 +72,12 @@ export default function Handover() {
           </Card>
           {canWrite && (
             <Card title="Write a handover">
-              <form className="form" onSubmit={(e) => { e.preventDefault(); save.mutate() }}>
+              <form className="form" onSubmit={(e) => {
+                e.preventDefault()
+                setMissing(!notes.trim())
+                if (notes.trim()) save.mutate()
+              }}>
+                {missing && <ErrorBox error="Write a note for the next shift before saving." />}
                 <div className="grid cols-2">
                   <label className="field"><span>Handing over to</span><input className="input" value={incoming} onChange={(e) => setIncoming(e.target.value)} placeholder="Name or team" /></label>
                   <label className="field"><span>Shift</span>
@@ -81,10 +87,10 @@ export default function Handover() {
                   </label>
                 </div>
                 <label className="field"><span>Notes</span>
-                  <textarea className="textarea" style={{ minHeight: 140 }} value={notes} onChange={(e) => setNotes(e.target.value)}
+                  <textarea className="textarea" style={{ minHeight: 140 }} value={notes} onChange={(e) => { setNotes(e.target.value); setMissing(false) }}
                     placeholder={'In progress: …\nWatch for: …\nBlocked on: …'} />
                 </label>
-                <div><button className="btn primary" disabled={!notes.trim() || save.isPending}>Save handover</button></div>
+                <div><button className="btn primary" disabled={save.isPending}>Save handover</button></div>
               </form>
             </Card>
           )}

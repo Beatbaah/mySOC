@@ -8,8 +8,9 @@ import type { Alert, Asset, Case, Flow, Indicator, UserRef } from '../api/types'
 import { CloseDialog } from '../components/AlertActions'
 import { FlowTable } from '../components/FlowTable'
 import {
-  Ago, Card, Country, Disposition, Empty, ErrorBox, errorText, Ip, Mitre, Modal, PageHead, Risk, Sev, Skeleton, Status, useToast,
+  Ago, Card, Country, Disposition, Empty, ErrorBox, errorText, Ip, Mitre, Modal, PageHead, Risk, Sev, Skeleton, ShowMore, Status, useToast,
 } from '../components/ui'
+import { useShown } from '../lib/useShown'
 import { dateTime, num, portLabel } from '../lib/format'
 import { techniqueUrl } from '../lib/mitre'
 
@@ -107,6 +108,7 @@ export default function AlertDetail() {
   const [assigning, setAssigning] = useState(false)
 
   const { data, error, isLoading } = useQuery({ queryKey: ['alerts', 'detail', id], queryFn: () => get<Detail>(`/api/alerts/${id}`) })
+  const related = useShown(data?.related ?? [], 10, 20, id)
   const people = useQuery({ queryKey: ['assignable'], queryFn: () => get<{ items: UserRef[] }>('/api/users/assignable'), enabled: assigning })
 
   const update = useMutation({
@@ -175,10 +177,11 @@ export default function AlertDetail() {
 
           <Card title="Other alerts involving these addresses" sub="Last 24 hours" flush>
             {data.related.length === 0 ? <Empty title="None" /> : (
+              <>
               <table className="data">
                 <tbody>
-                  {data.related.map((r) => (
-                    <tr key={r.id}>
+                  {related.shown.map((r, i) => (
+                    <tr key={r.id} className={related.fresh(i) ? 'row-in' : undefined}>
                       <td style={{ width: 90 }}><Sev s={r.severity} /></td>
                       <td><Link to={`/alerts/${r.id}`} className="title-text">{r.title}</Link></td>
                       <td><Mitre id={r.mitreTechnique} tactic={r.mitreTactic} /></td>
@@ -188,6 +191,8 @@ export default function AlertDetail() {
                   ))}
                 </tbody>
               </table>
+              <ShowMore remaining={related.remaining} next={related.next} onClick={related.showMore} noun="alerts" />
+              </>
             )}
           </Card>
         </div>

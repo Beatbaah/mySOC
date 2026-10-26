@@ -4,6 +4,7 @@ import { X } from 'lucide-react'
 import type { Severity } from '../api/types'
 import { countryName, dateTime, DISPOSITION_LABEL, flag, STATUS_LABEL, timeAgo } from '../lib/format'
 import { techniqueUrl } from '../lib/mitre'
+import { useTween } from '../lib/motion'
 
 export function PageHead({ title, sub, crumbs, actions }: { title: ReactNode; sub?: ReactNode; crumbs?: ReactNode; actions?: ReactNode }) {
   return (
@@ -113,11 +114,13 @@ export function Ago({ iso }: { iso: string | null | undefined }) {
   )
 }
 
-export function Empty({ title, children }: { title: string; children?: ReactNode }) {
+export function Empty({ title, children, icon, action }: { title: string; children?: ReactNode; icon?: ReactNode; action?: ReactNode }) {
   return (
-    <div className="empty">
+    <div className={`empty${icon ? ' big' : ''}`}>
+      {icon && <span className="empty-icon">{icon}</span>}
       <strong>{title}</strong>
       {children}
+      {action && <div className="empty-action">{action}</div>}
     </div>
   )
 }
@@ -135,6 +138,23 @@ export function Skeleton({ rows = 5, height = 14 }: { rows?: number; height?: nu
 export function ErrorBox({ error }: { error: unknown }) {
   if (!error) return null
   return <div className="error-box" role="alert">{error instanceof Error ? error.message : String(error)}</div>
+}
+
+/** A live number: counts to its new value and flashes once when it changes. */
+export function Ticker({ value, format = (n) => n.toLocaleString() }: { value: number; format?: (n: number) => string }) {
+  const [shown, changes] = useTween(value)
+  return <span key={changes} className={changes ? 'ticked' : undefined}>{format(shown)}</span>
+}
+
+/** The footer of a capped list: says how many are left and reveals the next batch. */
+export function ShowMore({ remaining, next, onClick, noun }: { remaining: number; next: number; onClick: () => void; noun: string }) {
+  if (!remaining) return null
+  return (
+    <button type="button" className="show-more" onClick={onClick}>
+      Show {next === remaining ? `all ${remaining}` : `${next} more`} {noun}
+      {next !== remaining && <span className="faint"> of {remaining} left</span>}
+    </button>
+  )
 }
 
 export function BarList({ items }: { items: { label: ReactNode; value: number; display?: ReactNode; key: string }[] }) {

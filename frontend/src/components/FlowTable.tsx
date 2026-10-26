@@ -1,9 +1,12 @@
 import type { Flow } from '../api/types'
 import { bytes, dateTime, num, portLabel } from '../lib/format'
-import { Country, Ip } from './ui'
+import { Country, Ip, ShowMore } from './ui'
+import { useShown } from '../lib/useShown'
 
-export function FlowTable({ flows }: { flows: Flow[] }) {
+export function FlowTable({ flows, first = 15 }: { flows: Flow[]; first?: number }) {
+  const list = useShown(flows, first, 25)
   return (
+    <>
     <div className="table-wrap">
       <table className="data">
         <thead>
@@ -18,8 +21,8 @@ export function FlowTable({ flows }: { flows: Flow[] }) {
           </tr>
         </thead>
         <tbody>
-          {flows.map((f) => (
-            <tr key={f.id}>
+          {list.shown.map((f, i) => (
+            <tr key={f.id} className={list.fresh(i) ? 'row-in' : undefined}>
               <td className="muted nowrap">{dateTime(f.start)}</td>
               <td className="nowrap"><Ip ip={f.srcIp} /><span className="faint mono" style={{ fontSize: 11 }}>:{f.srcPort}</span> {f.srcCountry && <span className="faint" style={{ fontSize: 12 }}><Country code={f.srcCountry} /></span>}</td>
               <td className="nowrap"><Ip ip={f.dstIp} /><span className="faint mono" style={{ fontSize: 11 }}>:{portLabel(f.dstPort)}</span> {f.dstCountry && <span className="faint" style={{ fontSize: 12 }}><Country code={f.dstCountry} /></span>}</td>
@@ -32,5 +35,7 @@ export function FlowTable({ flows }: { flows: Flow[] }) {
         </tbody>
       </table>
     </div>
+    <ShowMore remaining={list.remaining} next={list.next} onClick={list.showMore} noun="flows" />
+    </>
   )
 }

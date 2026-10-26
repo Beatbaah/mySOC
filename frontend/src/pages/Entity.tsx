@@ -6,7 +6,8 @@ import { useCan } from '../api/auth'
 import { get, patch, post } from '../api/client'
 import type { Alert, Asset, Indicator, LogEvent } from '../api/types'
 import { TrafficArea } from '../components/charts'
-import { Ago, BarList, Card, Country, Empty, ErrorBox, errorText, Ip, Mitre, Modal, PageHead, Seg, Sev, Skeleton, Status, useToast } from '../components/ui'
+import { Ago, BarList, Card, Country, Empty, ErrorBox, errorText, Ip, Mitre, Modal, PageHead, Seg, Sev, Skeleton, Status, useToast, ShowMore } from '../components/ui'
+import { useShown } from '../lib/useShown'
 import { bytes, dateTime, num, portLabel } from '../lib/format'
 
 interface Peer { ip: string; country: string; flows: number; bytes: number }
@@ -67,6 +68,8 @@ export default function Entity() {
   const qc = useQueryClient()
   const toast = useToast()
   const { data, error, isLoading } = useQuery({ queryKey: ['entity', ip, hours], queryFn: () => get<EntityData>(`/api/entities/ip/${encodeURIComponent(ip)}`, { hours }) })
+  const alerts = useShown(data?.alerts ?? [], 10, 20, `${ip}|${hours}`)
+  const logs = useShown(data?.logs ?? [], 5, 10, `${ip}|${hours}`)
   const block = useMutation({
     mutationFn: () => post('/api/indicators', { value: ip, threat: 'Added from entity page', confidence: 80 }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['entity'] }); toast(`${ip} added to the indicator list`) },
@@ -119,8 +122,8 @@ export default function Entity() {
             {data.alerts.length === 0 ? <Empty title="No alerts involve this address" /> : (
               <table className="data">
                 <tbody>
-                  {data.alerts.slice(0, 20).map((a) => (
-                    <tr key={a.id}>
+                  {alerts.shown.map((a, i) => (
+                    <tr key={a.id} className={alerts.fresh(i) ? 'row-in' : undefined}>
                       <td style={{ width: 90 }}><Sev s={a.severity} /></td>
                       <td><Link to={`/alerts/${a.id}`} className="title-text">{a.title}</Link><div className="sub"><Ago iso={a.lastSeen} /></div></td>
                       <td><Mitre id={a.mitreTechnique} /></td>
@@ -130,6 +133,7 @@ export default function Entity() {
                 </tbody>
               </table>
             )}
+            <ShowMore remaining={alerts.remaining} next={alerts.next} onClick={alerts.showMore} noun="alerts" />
           </Card>
           <div className="grid">
             {data.asset && (
@@ -158,12 +162,13 @@ export default function Entity() {
               {data.logs.length === 0 ? <Empty title="No log lines mention this address" /> : (
                 <table className="data">
                   <tbody>
-                    {data.logs.slice(0, 10).map((l) => (
-                      <tr key={l.id}><td className="muted nowrap" style={{ width: 130 }}>{dateTime(l.at)}</td><td className="mono" style={{ fontSize: 12 }}>{l.host} {l.app}: {l.message}</td></tr>
+                    {logs.shown.map((l, i) => (
+                      <tr key={l.id} className={logs.fresh(i) ? 'row-in' : undefined}><td className="muted nowrap" style={{ width: 130 }}>{dateTime(l.at)}</td><td className="mono" style={{ fontSize: 12 }}>{l.host} {l.app}: {l.message}</td></tr>
                     ))}
                   </tbody>
                 </table>
               )}
+              <ShowMore remaining={logs.remaining} next={logs.next} onClick={logs.showMore} noun="log lines" />
             </Card>
           </div>
         </div>

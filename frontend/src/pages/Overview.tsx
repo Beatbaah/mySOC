@@ -5,7 +5,7 @@ import { ArrowDownRight, ArrowUpRight } from 'lucide-react'
 import { get } from '../api/client'
 import type { Alert, Sensor } from '../api/types'
 import { KillChain, SeverityTimeline, WorldMap } from '../components/charts'
-import { Ago, BarList, Card, Country, Empty, ErrorBox, Ip, PageHead, Risk, Seg, Sev, Skeleton } from '../components/ui'
+import { Ago, BarList, Card, Country, Empty, ErrorBox, Ip, PageHead, Risk, Seg, Sev, Skeleton, Ticker } from '../components/ui'
 import { bytes, compact, minutes, num, SEVERITIES } from '../lib/format'
 import { useChanged } from '../lib/useChanged'
 
@@ -45,6 +45,33 @@ function Delta({ now, before }: { now: number; before: number }) {
   )
 }
 
+// Share of open alerts by severity, as one stacked bar.
+function SevBar({ counts }: { counts: Record<string, number> }) {
+  const total = SEVERITIES.slice(0, 4).reduce((sum, s) => sum + (counts[s] ?? 0), 0)
+  return (
+    <div className="sev-bar" role="img" aria-label="Open alerts by severity">
+      {total > 0 && SEVERITIES.slice(0, 4).map((s) => (counts[s] ? <i key={s} className={`sev-${s}`} style={{ flexGrow: counts[s] }} /> : null))}
+    </div>
+  )
+}
+
+function Meter({ share, tone }: { share: number; tone: string }) {
+  return <div className="meter"><i style={{ width: `${Math.min(1, Math.max(0, share)) * 100}%`, background: tone }} /></div>
+}
+
+// Alerts per time step across the period: the shape, not the scale.
+function Spark({ points }: { points: number[] }) {
+  if (points.length < 2) return <div className="spark" />
+  const max = Math.max(1, ...points)
+  const d = points.map((v, i) => `${((i / (points.length - 1)) * 100).toFixed(2)},${(22 - (v / max) * 20).toFixed(2)}`).join(' ')
+  return (
+    <svg className="spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden>
+      <polyline points={`0,24 ${d} 100,24`} className="spark-fill" />
+      <polyline points={d} className="spark-line" />
+    </svg>
+  )
+}
+
 export function Overview() {
   const [hours, setHours] = useState(24)
   const nav = useNavigate()
@@ -55,6 +82,7 @@ export function Overview() {
   })
 
   const k = data?.kpis
+  const topRuleMax = Math.max(1, ...(data?.topRules ?? []).map((r) => r.alerts))
   const [urgency, setUrgency] = useState<'all' | 'critical' | 'high'>('all')
   const urgent = data?.urgent.filter((a) => urgency === 'all' || a.severity === urgency)
   const changed = useChanged(data?.urgent, (a) => a.id, (a) => a.lastSeen)
@@ -75,33 +103,42 @@ export function Overview() {
       ) : (
         <div className="grid" style={{ gap: 14 }}>
           <div className="grid cols-4">
-            <Link to="/alerts?status=new&status=in_progress" className="card kpi">
+            <Link to="/alerts?status=new&status=in_progress" className="card kpi link">
               <div className="label">Open alerts</div>
-              <div className="value">{num(k.openTotal)}</div>
-              <div className="note" style={{ display: 'flex', gap: 10 }}>
-                {SEVERITIES.slice(0, 4).map((s) => (
-                  <span key={s} title={s} className="nowrap">
-                    <span className={`badge sev sev-${s}`} style={{ height: 'auto' }}><span className="sev-dot" /></span>{' '}
-                    {k.openBySeverity[s] ?? 0}
-                  </span>
-                ))}
+              <div className="value"><Ticker value={k.openTotal} format={num} /></div>
+              <div className="kpi-foot">
+                <SevBar counts={k.openBySeverity} />
+                <div className="kpi-legend">
+                  {SEVERITIES.slice(0, 4).map((s) => (
+                    <span key={s} className={`sev-${s}`} title={`${k.openBySeverity[s] ?? 0} ${s}`}><i className="sev-dot" />{num(k.openBySeverity[s] ?? 0)}<span className="lg-name">{s}</span></span>
+                  ))}
+                </div>
               </div>
             </Link>
-            <Link to="/alerts?status=new&assignee=unassigned" className="card kpi">
+            <Link to="/alerts?status=new&assignee=unassigned" className="card kpi link">
               <div className="label">Waiting for someone</div>
-              <div className="value" style={{ color: k.newUnassigned ? 'var(--sev-medium)' : undefined }}>{num(k.newUnassigned)}</div>
-              <div className="note">new and unassigned</div>
+              <div className="value"><Ticker value={k.newUnassigned} format={num} /><span className="of">of {num(k.openTotal)} open</span></div>
+              <div className="kpi-foot">
+                <Meter share={k.openTotal ? k.newUnassigned / k.openTotal : 0} tone="var(--sev-medium)" />
+                <div className="note">New and nobody has taken them yet</div>
+              </div>
             </Link>
             <div className="card kpi">
               <div className="label">Alerts in period</div>
-              <div className="value">{num(k.alertsInPeriod)}</div>
-              <div className="note"><Delta now={k.alertsInPeriod} before={k.alertsPrevPeriod} /></div>
+              <div className="value"><Ticker value={k.alertsInPeriod} format={num} /></div>
+              <div className="kpi-foot">
+                <Spark points={data.timeline.map((p) => SEVERITIES.reduce((sum, s) => sum + Number(p[s] ?? 0), 0))} />
+                <div className="note"><Delta now={k.alertsInPeriod} before={k.alertsPrevPeriod} /></div>
+              </div>
             </div>
             <div className="card kpi">
               <div className="label">Mean time to close</div>
               <div className="value">{minutes(k.meanMinutesToClose)}</div>
-              <div className="note">
-                {k.falsePositiveRate == null ? 'nothing closed yet' : `${Math.round(k.falsePositiveRate * 100)}% closed as false positive`}
+              <div className="kpi-foot">
+                <Meter share={k.falsePositiveRate ?? 0} tone="var(--text-3)" />
+                <div className="note">
+                  {k.falsePositiveRate == null ? 'Nothing closed yet' : `${Math.round(k.falsePositiveRate * 100)}% closed as false positive`}
+                </div>
               </div>
             </div>
           </div>
@@ -167,13 +204,24 @@ export function Overview() {
                 </table>
               )}
             </Card>
-            <Card title="Busiest detections">
-              <BarList items={data.topRules.map((r) => ({
-                key: r.ruleId,
-                label: <Link to={`/alerts?rule=${r.ruleId}`}><span className="mono faint">{r.ruleId}</span> {r.title}</Link>,
-                value: r.alerts,
-                display: `${r.alerts} · ${compact(r.events)} events`,
-              }))} />
+            <Card title="Busiest detections" sub="Rules raising the most alerts">
+              {data.topRules.length === 0 ? <Empty title="Nothing in this period" /> : (
+                <ol className="rule-list">
+                  {data.topRules.slice(0, 6).map((r) => (
+                    <li key={r.ruleId}>
+                      <Link to={`/alerts?rule=${r.ruleId}`}>
+                        <b className="rule-count"><Ticker value={r.alerts} /></b>
+                        <span className="rule-title">{r.title}</span>
+                        <span className="rule-meta">
+                          <span className="mono">{r.ruleId}</span>
+                          <span>{compact(r.events)} events</span>
+                          <span className="track"><i style={{ width: `${(r.alerts / topRuleMax) * 100}%` }} /></span>
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ol>
+              )}
             </Card>
           </div>
 

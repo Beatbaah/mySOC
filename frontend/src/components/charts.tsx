@@ -91,33 +91,47 @@ export function TrafficArea({ data, step, metric, height = 220 }: {
   )
 }
 
-// ATT&CK kill chain: every tactic shown in order, lit by how many alerts it had.
+// Soft hyphens so long tactic names break between syllables, not mid-letter, in narrow columns.
+const breakable = (t: string) =>
+  t.replace('Reconnaissance', 'Recon\u00ADnaissance').replace('Development', 'Develop\u00ADment')
+    .replace('Persistence', 'Persist\u00ADence').replace('Exfiltration', 'Exfil\u00ADtration').replace('Escalation', 'Escala\u00ADtion')
+
+// The ATT&CK tactics as one track in kill-chain order. Each stage the alerts reached gets a bar sized
+// to its count; the track fills from the first stage seen to the furthest, and the headline says how far
+// the attack got, which is the question this panel answers.
 export function KillChain({ counts }: { counts: { tactic: string; count: number }[] }) {
   const by = Object.fromEntries(counts.map((c) => [c.tactic, c.count]))
   const max = Math.max(1, ...counts.map((c) => c.count))
+  const seen = TACTICS.map((t, i) => ((by[t] ?? 0) > 0 ? i : -1)).filter((i) => i >= 0)
+  const first = seen[0] ?? -1
+  const last = seen[seen.length - 1] ?? -1
+  const step = 100 / TACTICS.length
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 6 }}>
-      {TACTICS.map((t) => {
-        const n = by[t] ?? 0
-        const strength = n ? 0.18 + 0.62 * (n / max) : 0
-        return (
-          <div
-            key={t}
-            title={`${t}: ${n} alert${n === 1 ? '' : 's'}`}
-            style={{
-              border: '1px solid var(--border)',
-              borderRadius: 6,
-              padding: '8px 9px',
-              minHeight: 58,
-              background: n ? `color-mix(in srgb, var(--sev-high) ${Math.round(strength * 100)}%, var(--surface))` : 'var(--surface-2)',
-              color: n ? 'var(--text)' : 'var(--text-3)',
-            }}
-          >
-            <div style={{ fontSize: 11, lineHeight: 1.25 }}>{t}</div>
-            <div className="mono" style={{ fontSize: 15, marginTop: 4 }}>{n || '·'}</div>
-          </div>
-        )
-      })}
+    <div className="kc">
+      <div className="kc-head">
+        {last < 0 ? <span className="faint">No attack stages seen in this period.</span> : (
+          <>
+            <span>Furthest stage reached</span>
+            <b>{TACTICS[last]}</b>
+            <span className="faint">{seen.length} of {TACTICS.length} stages seen</span>
+          </>
+        )}
+      </div>
+      <div className="kc-track" style={{ ['--kc-from' as string]: `${(first + 0.5) * step}%`, ['--kc-to' as string]: `${(last + 0.5) * step}%` }}>
+        {TACTICS.map((t, i) => {
+          const n = by[t] ?? 0
+          return (
+            <div key={t} className={`kc-stage${n ? ' on' : ''}${i === last ? ' last' : ''}`} title={`${t}: ${n} alert${n === 1 ? '' : 's'}`}>
+              <div className="kc-bar-wrap">
+                {n > 0 && <span className="kc-n">{num(n)}</span>}
+                <i className="kc-bar" style={{ height: n ? `${8 + 56 * Math.sqrt(n / max)}px` : 0 }} />
+              </div>
+              <span className="kc-dot" />
+              <span className="kc-name">{breakable(t)}</span>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

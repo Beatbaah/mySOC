@@ -123,7 +123,7 @@ export default function Rules() {
                     <tr key={r.id} style={{ opacity: r.enabled ? 1 : 0.55 }}>
                       <td>
                         <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', cursor: isAdmin ? 'pointer' : 'default' }}>
-                          <input type="checkbox" checked={r.enabled} disabled={!isAdmin || toggle.isPending} onChange={() => toggle.mutate(r)} aria-label={`${r.enabled ? 'Disable' : 'Enable'} ${r.name}`} />
+                          <input type="checkbox" role="switch" className="switch" checked={r.enabled} disabled={!isAdmin || toggle.isPending} onChange={() => toggle.mutate(r)} aria-label={`${r.enabled ? 'Disable' : 'Enable'} ${r.name}`} />
                         </label>
                       </td>
                       <td className="title-cell">

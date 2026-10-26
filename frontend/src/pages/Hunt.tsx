@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Play } from 'lucide-react'
+import { Crosshair, Play } from 'lucide-react'
 import { useCan } from '../api/auth'
 import { get, post } from '../api/client'
 import { Card, Country, Empty, ErrorBox, Ip, PageHead, Skeleton } from '../components/ui'
@@ -65,7 +65,7 @@ export default function Hunt() {
 
         <div className="grid">
           {!current ? (
-            <Card className="centered"><Empty title="Pick a hunt">Results show here, with every address linked to its entity page.</Empty></Card>
+            <Card className="centered"><Empty title="Pick a hunt" icon={<Crosshair size={20} />}>Choose a question on the left. Results show here, with every address linked to its entity page.</Empty></Card>
           ) : (
             <>
               <Card title={current.name} sub={current.question}>

@@ -59,6 +59,10 @@ export default function Reports() {
           </Card>
           <div className="grid cols-3">
             <Card title="How alerts were closed">
+              <div className="card-stat">
+                <b>{num(t.dispositions.true_positive + t.dispositions.benign + t.dispositions.false_positive)}</b>
+                <span>closed in this period, {num(t.dispositions.open)} still open</span>
+              </div>
               <BarList items={[
                 { key: 'tp', label: 'True positive', value: t.dispositions.true_positive },
                 { key: 'benign', label: 'Benign', value: t.dispositions.benign },
@@ -66,15 +70,16 @@ export default function Reports() {
                 { key: 'open', label: 'Still open', value: t.dispositions.open },
               ]} />
             </Card>
-            <Card title="Noisiest rules"><BarList items={data.byRule.map((r) => ({ key: r.ruleId, label: <Link to={`/alerts?rule=${r.ruleId}&view=all`} className="mono">{r.ruleId}</Link>, value: r.alerts }))} /></Card>
+            <Card title="Noisiest rules"><BarList items={data.byRule.slice(0, 7).map((r) => ({ key: r.ruleId, label: <Link to={`/alerts?rule=${r.ruleId}&view=all`} className="mono">{r.ruleId}</Link>, value: r.alerts }))} /></Card>
             <Card title="ATT&CK tactics"><BarList items={data.byTactic.map((r) => ({ key: r.tactic, label: r.tactic, value: r.alerts }))} /></Card>
           </div>
           <Card title="Top sources" sub="Highest risk first" flush>
-            <table className="data">
-              <thead><tr><th>Source</th><th>Country</th><th className="num">Alerts</th><th>Highest risk</th></tr></thead>
+            <table className="data fixed">
+              <colgroup><col /><col /><col /><col /></colgroup>
+              <thead><tr><th>Source</th><th>Country</th><th>Alerts</th><th>Highest risk</th></tr></thead>
               <tbody>
                 {data.topSources.map((s) => (
-                  <tr key={s.ip}><td><Ip ip={s.ip} /></td><td><Country code={s.country} name /></td><td className="num">{s.alerts}</td><td><Risk score={s.maxRisk} /></td></tr>
+                  <tr key={s.ip}><td><Ip ip={s.ip} /></td><td><Country code={s.country} name /></td><td className="mono">{s.alerts}</td><td><Risk score={s.maxRisk} /></td></tr>
                 ))}
               </tbody>
             </table>
